@@ -1,0 +1,523 @@
+<!-- ================================================================
+  🤖 SUPPORT BOT — Embed Code
+  ================================================================
+  Instructions:
+  1. Replace BOT_URL with your deployed bot URL (e.g., 
+     "https://bot.yourbusiness.com")
+  2. Copy and paste this entire snippet into your website's 
+     </body> tag (just before the closing body tag)
+  3. Customize colors, position, or button text as desired
+  ================================================================ -->
+
+<script>
+(function() {
+  // ═══════ CONFIGURATION ═══════════════════════════════════════
+  const CONFIG = {
+    // 🎯 REQUIRED: Your bot's URL (include ?embed=1)
+    BOT_URL: "https://bot.yourbusiness.com?embed=1",
+    
+    // 🎨 Optional: Customize the widget appearance
+    PRIMARY_COLOR: "#6366f1",      // Button & accent color
+    BOT_NAME: "Support Bot",       // Display name
+    WIDTH: 380,                    // Chat window width (px)
+    HEIGHT: 560,                   // Chat window height (px)
+    BUTTON_SIZE: 56,               // Floating button size (px)
+    BOTTOM_OFFSET: 24,             // Distance from bottom (px)
+    RIGHT_OFFSET: 24,              // Distance from right (px)
+    
+    // 💬 Labels
+    GREETING: "Hi! 👋 How can I help?",
+    BUTTON_LABEL: "💬",
+    CLOSE_LABEL: "✕",
+    
+    // 🔊 Sound notification (optional — uses Web Audio API, no files needed)
+    SOUND_ENABLED: true,      // Set to false to disable the notification chime
+    SOUND_VOLUME: 0.25,       // Volume 0.0–1.0 (0.25 is a subtle chime)
+  };
+
+  // ═══════ DO NOT EDIT BELOW ═══════════════════════════════════
+  
+  // ─── Create styles ───────────────────────────────────────────
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes widgetSlideIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes widgetSlideOut {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(16px) scale(0.95); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 4px 16px ${CONFIG.PRIMARY_COLOR}66; }
+      50% { transform: scale(1.05); box-shadow: 0 6px 24px ${CONFIG.PRIMARY_COLOR}88; }
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0); }
+      60% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes notificationBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    @keyframes typingPulse {
+      0%, 100% { box-shadow: 0 4px 16px ${CONFIG.PRIMARY_COLOR}66; }
+      50% { box-shadow: 0 4px 24px ${CONFIG.PRIMARY_COLOR}aa; }
+    }
+    
+    .sb-widget-container {
+      position: fixed;
+      bottom: ${CONFIG.BOTTOM_OFFSET}px;
+      right: ${CONFIG.RIGHT_OFFSET}px;
+      z-index: 2147483647;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.4;
+    }
+    
+    /* ── Chat iframe ─────────────────────────────────────────── */
+    .sb-chat-frame {
+      position: fixed;
+      bottom: ${CONFIG.BOTTOM_OFFSET + CONFIG.BUTTON_SIZE + 16}px;
+      right: ${CONFIG.RIGHT_OFFSET}px;
+      width: ${CONFIG.WIDTH}px;
+      height: ${CONFIG.HEIGHT}px;
+      max-width: calc(100vw - ${CONFIG.RIGHT_OFFSET * 2}px);
+      max-height: calc(100vh - ${CONFIG.BOTTOM_OFFSET * 2 + CONFIG.BUTTON_SIZE + 32}px);
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+      background: white;
+      display: none;
+      animation: widgetSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      transform-origin: bottom right;
+    }
+    .sb-chat-frame.open {
+      display: block;
+    }
+    .sb-chat-frame.closing {
+      animation: widgetSlideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @media (max-width: 480px) {
+      .sb-chat-frame {
+        width: 100vw;
+        height: 100vh;
+        max-width: 100vw;
+        max-height: 100vh;
+        bottom: 0;
+        right: 0;
+        border-radius: 0;
+      }
+    }
+    
+    /* ── Floating action button ──────────────────────────────── */
+    .sb-button {
+      width: ${CONFIG.BUTTON_SIZE}px;
+      height: ${CONFIG.BUTTON_SIZE}px;
+      border-radius: 50%;
+      background: ${CONFIG.PRIMARY_COLOR};
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: ${CONFIG.BUTTON_SIZE * 0.45}px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px ${CONFIG.PRIMARY_COLOR}66;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      animation: bounceIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sb-button:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 24px ${CONFIG.PRIMARY_COLOR}88;
+    }
+    .sb-button:active {
+      transform: scale(0.92);
+    }
+    .sb-button.has-message {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    /* ── Notification badge ──────────────────────────────────── */
+    .sb-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+      box-shadow: 0 2px 6px rgba(239,68,68,0.4);
+      animation: bounceIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sb-badge.typing {
+      background: ${CONFIG.PRIMARY_COLOR};
+      font-size: 14px;
+      letter-spacing: 1px;
+      box-shadow: 0 2px 8px ${CONFIG.PRIMARY_COLOR}66;
+      min-width: 28px;
+    }
+    .sb-button.sb-typing {
+      animation: typingPulse 1s ease-in-out infinite !important;
+    }
+    
+    /* ── Greeting tooltip ────────────────────────────────────── */
+    .sb-greeting {
+      position: absolute;
+      bottom: ${CONFIG.BUTTON_SIZE + 12}px;
+      right: 0;
+      background: white;
+      color: #1a1a2e;
+      padding: 10px 16px;
+      border-radius: 16px 16px 4px 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      font-size: 14px;
+      white-space: nowrap;
+      animation: widgetSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 260px;
+      white-space: normal;
+    }
+    .sb-greeting::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      right: 16px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      clip-path: polygon(0 0, 100% 0, 0 100%);
+    }
+
+    /* ── Toast notification ──────────────────────────────────── */
+    .sb-toast {
+      position: absolute;
+      bottom: ${CONFIG.BUTTON_SIZE + 12}px;
+      right: 0;
+      background: white;
+      color: #1a1a2e;
+      padding: 10px 14px;
+      border-radius: 12px 12px 4px 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 240px;
+      display: none;
+      border-left: 3px solid ${CONFIG.PRIMARY_COLOR};
+      cursor: pointer;
+      z-index: 2147483647;
+      animation: widgetSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sb-toast.show {
+      display: block;
+    }
+    .sb-toast .sb-toast-title {
+      font-weight: 600;
+      font-size: 11px;
+      color: ${CONFIG.PRIMARY_COLOR};
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 2px;
+    }
+    .sb-toast .sb-toast-preview {
+      color: #475569;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // ─── Create container ─────────────────────────────────────────
+  var container = document.createElement('div');
+  container.className = 'sb-widget-container';
+
+  // ─── Toast notification ─────────────────────────────────────
+  var toast = document.createElement('div');
+  toast.className = 'sb-toast';
+  toast.innerHTML = '<div class="sb-toast-title">' + CONFIG.BOT_NAME + '</div><div class="sb-toast-preview"></div>';
+  container.appendChild(toast);
+  toast.addEventListener('click', function() {
+    if (!isOpen) toggleChat();
+    toast.classList.remove('show');
+  });
+
+  // ─── Greeting ────────────────────────────────────────────────
+  var greeting = document.createElement('div');
+  greeting.className = 'sb-greeting';
+  greeting.textContent = CONFIG.GREETING;
+  container.appendChild(greeting);
+
+  // ─── Floating button ─────────────────────────────────────────
+  var button = document.createElement('button');
+  button.className = 'sb-button has-message';
+  button.innerHTML = CONFIG.BUTTON_LABEL;
+  button.setAttribute('aria-label', 'Open chat');
+  container.appendChild(button);
+
+  // ─── Unread badge ────────────────────────────────────────────
+  var badge = document.createElement('span');
+  badge.className = 'sb-badge';
+  badge.style.display = 'none';
+  badge.textContent = '0';
+  button.appendChild(badge);
+
+  // ─── Chat frame ──────────────────────────────────────────────
+  var iframe = document.createElement('iframe');
+  iframe.className = 'sb-chat-frame';
+  iframe.src = CONFIG.BOT_URL;
+  iframe.title = CONFIG.BOT_NAME + ' Chat';
+  iframe.allow = 'clipboard-read; clipboard-write';
+  container.appendChild(iframe);
+
+  document.body.appendChild(container);
+
+  // ─── Audio context (shared for sound notifications) ──────────
+  var audioCtx = null;
+
+  // ─── Play a subtle chime using Web Audio API ─────────────────
+  function playChime() {
+    if (!CONFIG.SOUND_ENABLED) return;
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      var now = audioCtx.currentTime;
+      var vol = Math.max(0, Math.min(1, CONFIG.SOUND_VOLUME || 0.25));
+
+      // First tone — soft sine at A5 (880 Hz), fades in gently
+      var osc1 = audioCtx.createOscillator();
+      var gain1 = audioCtx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      gain1.gain.setValueAtTime(0, now);
+      gain1.gain.linearRampToValueAtTime(vol, now + 0.02);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc1.start(now);
+      osc1.stop(now + 0.4);
+
+      // Second tone — higher C#6 (1108 Hz), slightly delayed for a pleasant two-tone
+      var osc2 = audioCtx.createOscillator();
+      var gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1108, now);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      gain2.gain.setValueAtTime(0, now);
+      gain2.gain.linearRampToValueAtTime(vol * 0.7, now + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc2.start(now + 0.06);
+      osc2.stop(now + 0.5);
+    } catch(e) {
+      // Audio not available — silently ignore
+    }
+  }
+
+  // ─── State ───────────────────────────────────────────────────
+  var isOpen = false;
+  var unreadCount = 0;
+  var typingTimer = null;
+
+  // ─── Reset unread badge ──────────────────────────────────────
+  function resetBadge() {
+    unreadCount = 0;
+    badge.style.display = 'none';
+    button.classList.remove('has-message');
+  }
+
+  // ─── Clear typing indicator ──────────────────────────────────
+  function clearTyping() {
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+    }
+    button.classList.remove('sb-typing');
+    badge.classList.remove('typing');
+    // Only restore badge content if it's showing the typing dots
+    if (badge.textContent === '⋯' || badge.textContent === '') {
+      badge.style.display = 'none';
+    }
+  }
+
+  // ─── Show typing indicator from parent widget ────────────────
+  function showTyping() {
+    clearTyping();
+    badge.textContent = '⋯';
+    badge.style.display = 'flex';
+    badge.classList.add('typing');
+    button.classList.add('sb-typing');
+    button.classList.add('has-message');
+
+    // Show typing toast
+    toast.querySelector('.sb-toast-title').textContent = CONFIG.BOT_NAME;
+    toast.querySelector('.sb-toast-preview').textContent = 'typing a response…';
+    toast.classList.add('show');
+
+    // Auto-clear typing state after 8 seconds (safety net)
+    if (typingTimer) clearTimeout(typingTimer);
+    typingTimer = setTimeout(function() {
+      clearTyping();
+      toast.classList.remove('show');
+    }, 8000);
+  }
+
+  // ─── Show notification ───────────────────────────────────────
+  function showNotification(text) {
+    clearTyping();
+
+    // Play sound notification only when chat is closed (user isn't watching)
+    if (!isOpen) {
+      playChime();
+    }
+
+    unreadCount++;
+    badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+    badge.style.display = 'flex';
+    badge.style.animation = 'none';
+    badge.offsetHeight; // force reflow
+    badge.style.animation = 'bounceIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+    button.classList.add('has-message');
+
+    // Show toast with message preview
+    var preview = text || 'New message from ' + CONFIG.BOT_NAME;
+    if (preview.length > 80) preview = preview.substring(0, 80) + '…';
+    toast.querySelector('.sb-toast-preview').textContent = preview;
+    toast.classList.add('show');
+
+    // Hide greeting if visible (avoid overlap)
+    if (greeting.style.display !== 'none') {
+      greeting.style.display = 'none';
+    }
+
+    // Auto-dismiss toast after 4 seconds
+    if (toast._timeout) clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(function() {
+      toast.classList.remove('show');
+    }, 4000);
+  }
+
+  // ─── Toggle chat ─────────────────────────────────────────────
+  function toggleChat() {
+    // Resume audio context on user interaction (browser autoplay policy)
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    if (isOpen) {
+      iframe.classList.add('closing');
+      setTimeout(function() {
+        iframe.classList.remove('open', 'closing');
+        isOpen = false;
+        button.innerHTML = CONFIG.BUTTON_LABEL;
+        button.setAttribute('aria-label', 'Open chat');
+        greeting.style.display = 'block';
+        // Re-enable pulse after closing (unless there are unread messages)
+        if (unreadCount === 0) {
+          button.classList.add('has-message');
+        }
+      }, 200);
+    } else {
+      iframe.classList.add('open');
+      isOpen = true;
+      button.innerHTML = CONFIG.CLOSE_LABEL;
+      button.setAttribute('aria-label', 'Close chat');
+      greeting.style.display = 'none';
+      toast.classList.remove('show');
+      // Reset badge and typing when user opens the chat
+      clearTyping();
+      resetBadge();
+    }
+  }
+
+  button.addEventListener('click', toggleChat);
+
+  // ─── Close on Escape ─────────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && isOpen) {
+      toggleChat();
+    }
+  });
+
+  // ─── Auto-hide greeting after 6 seconds ──────────────────────
+  setTimeout(function() {
+    if (greeting && greeting.style.display !== 'none') {
+      greeting.style.animation = 'widgetSlideOut 0.3s cubic-bezier(0.4,0,0.2,1)';
+      setTimeout(function() {
+        greeting.style.display = 'none';
+      }, 300);
+    }
+  }, 6000);
+
+  // ─── Handle messages from iframe ─────────────────────────────
+  window.addEventListener('message', function(event) {
+    // Accept messages from our bot origin
+    try {
+      var url = new URL(CONFIG.BOT_URL);
+      if (event.origin !== url.origin) return;
+    } catch(e) { return; }
+    
+    if (event.data === 'sb-close') {
+      if (isOpen) toggleChat();
+    }
+
+    // Typing indicator from bot
+    if (event.data === 'sb-typing') {
+      showTyping();
+    }
+    
+    // New message notification from bot
+    if (event.data && typeof event.data === 'object' && event.data.type === 'sb-new-message') {
+      showNotification(event.data.text || '');
+    }
+  });
+
+})();
+</script>
+
+<!-- ================================================================
+  📝 Quick Customization Guide:
+  
+  | Setting           | Change this                         |
+  |-------------------|---------------------------------------|
+  | Bot URL           | CONFIG.BOT_URL                      |
+  | Button color      | CONFIG.PRIMARY_COLOR                |
+  | Widget size       | CONFIG.WIDTH / CONFIG.HEIGHT        |
+  | Position          | CONFIG.BOTTOM_OFFSET / RIGHT_OFFSET |
+  | Greeting message  | CONFIG.GREETING                     |
+  
+  Example with custom colors:
+  
+    PRIMARY_COLOR: "#f97316",  // Orange button
+    GREETING: "Need help? 🙋",
+  
+  To disable the notification chime:
+  
+    SOUND_ENABLED: false,
+  
+  To adjust the chime volume:
+  
+    SOUND_VOLUME: 0.5,     // Range 0.0–1.0, default 0.25
+  
+  ================================================================ -->
