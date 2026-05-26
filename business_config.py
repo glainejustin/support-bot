@@ -139,6 +139,60 @@ WEBHOOK_URL = ""                              # e.g., "https://hooks.slack.com/s
 WEBHOOK_TITLE = "New Lead Captured! 🎯"       # Title/header for the webhook message
 WEBHOOK_ENABLED = bool(WEBHOOK_URL)            # Auto-enabled when URL is set
 
+# ─── RATE LIMITING ──────────────────────────────────────────────────────────
+
+# Limits how many messages a single session can send within the time window.
+# Helps prevent spam, resource exhaustion, and accidental infinite loops.
+# Set RATE_LIMIT_ENABLED to False to disable (not recommended in production).
+RATE_LIMIT_ENABLED = True
+RATE_LIMIT_MAX_MESSAGES = 20       # Max messages allowed per window
+RATE_LIMIT_WINDOW_SECONDS = 60     # Time window in seconds
+
+# ─── INPUT LENGTH LIMITS ───────────────────────────────────────────────────
+
+# Maximum character lengths for various input fields.
+# Prevents storage bloat, display issues, and DoS via huge payloads.
+MAX_CHAT_MESSAGE_LENGTH = 2000      # User chat messages
+MAX_LEAD_NAME_LENGTH = 255          # Lead capture form: name
+MAX_LEAD_EMAIL_LENGTH = 255         # Lead capture form: email
+MAX_LEAD_PHONE_LENGTH = 50          # Lead capture form: phone
+MAX_LEAD_COMPANY_LENGTH = 255       # Lead capture form: company
+MAX_FAQ_QUESTION_LENGTH = 500       # Admin FAQ training: question
+MAX_FAQ_KEYWORDS_LENGTH = 500       # Admin FAQ training: keywords
+MAX_FAQ_ANSWER_LENGTH = 5000        # Admin FAQ training: answer
+MAX_HANDOFF_MESSAGE_LENGTH = 2000   # Agent handoff: response
+MAX_ADMIN_NOTE_LENGTH = 1000        # Admin lead notes
+
+# ─── WHATSAPP INTEGRATION ───────────────────────────────────────────────────
+
+# WhatsApp bot powered by Twilio.
+# To enable:
+#   1. Sign up at https://twilio.com (free trial available)
+#   2. Get your Account SID and Auth Token from the Twilio Console
+#   3. Get a Twilio WhatsApp-enabled number or use the Sandbox
+#   4. Set these as environment variables or add them to .env:
+#        TWILIO_ACCOUNT_SID=your_sid
+#        TWILIO_AUTH_TOKEN=your_token
+#        TWILIO_WHATSAPP_NUMBER=+14155238886
+#   5. Start the webhook server:
+#        uvicorn whatsapp_handler:app --host 0.0.0.0 --port 8000
+#   6. Expose with ngrok: ngrok http 8000
+#   7. Set the ngrok URL as your Twilio WhatsApp webhook (e.g., https://xxxx.ngrok.io/whatsapp)
+
+# Set to True to enable the WhatsApp handler functionality
+WHATSAPP_ENABLED = False
+
+# Custom welcome message sent to new WhatsApp users (leave empty for default)
+WHATSAPP_WELCOME_MESSAGE = ""
+
+# ─── LEAD RETENTION POLICY ────────────────────────────────────────────────────
+
+# Auto-archive leads older than this many days.
+# Archived leads are moved from leads.json to archived_leads.json
+# and can still be viewed/exported from the admin dashboard.
+# Set to 0 to disable auto-archiving.
+LEAD_RETENTION_DAYS = 90
+
 # ─── DASHBOARD ADMIN PASSWORD ───────────────────────────────────────────────
 
 # ⚠️  SECURITY WARNING: Change this to a strong, unique password!

@@ -17,20 +17,29 @@ import json
 import csv
 import io
 import os
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta
 
 LEADS_FILE = os.path.join(os.path.dirname(__file__), "leads.json")
+ARCHIVED_LEADS_FILE = os.path.join(os.path.dirname(__file__), "archived_leads.json")
 
 
 class LeadsManager:
     def __init__(self, filepath=LEADS_FILE):
         self.filepath = filepath
         self._ensure_file()
+        self._ensure_file_archived()
 
     def _ensure_file(self):
         """Create the leads file if it doesn't exist."""
         if not os.path.exists(self.filepath):
             self._write([])
+
+    def _ensure_file_archived(self):
+        """Create the archived leads file if it doesn't exist."""
+        if not os.path.exists(ARCHIVED_LEADS_FILE):
+            with open(ARCHIVED_LEADS_FILE, "w") as f:
+                json.dump([], f)
 
     def _read(self):
         """Read all leads from the JSON file."""
@@ -39,6 +48,19 @@ class LeadsManager:
                 return json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             return []
+
+    def _read_archived(self):
+        """Read all archived leads."""
+        try:
+            with open(ARCHIVED_LEADS_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+    def _write_archived(self, leads):
+        """Write archived leads to file."""
+        with open(ARCHIVED_LEADS_FILE, "w") as f:
+            json.dump(leads, f, indent=2)
 
     def _write(self, leads):
         """Write leads to the JSON file."""
@@ -53,7 +75,7 @@ class LeadsManager:
         """
         leads = self._read()
         lead = {
-            "id": len(leads) + 1,
+            "id": str(uuid.uuid4()),
             "name": name,
             "email": email,
             "phone": phone,
@@ -159,6 +181,72 @@ class LeadsManager:
                 "question", "source", "timestamp", "status",
                 "email_sent", "email_sent_at", "notes"
             ])
+            writer.writeheader()
+            writer.writerows(leads)
+        return output.getvalue()
+
+    def archive_old_leads(self, retention_days=90):
+        """Move leads older than retention_days to the archive file.
+
+        Returns the number of leads archived.
+        Set retention_days to 0 to disable archiving.
+        """
+        if retention_days <= 0:
+            return 0
+
+        leads = self._read()
+        if not leads:
+            return 0
+
+        cutoff = datetime.now() - timedelta(days=retention_days)
+        active = []
+        to_archive = []
+
+        for lead in leads:
+            try:
+                lead_time = datetime.strptime(lead["timestamp"], "%Y-%m-%d %H:%M:%S")
+                if lead_time < cutoff:
+                    lead["archived_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    to_archive.append(lead)
+                else:
+                    active.append(lead)
+            except (ValueError, KeyError):
+                # If timestamp can't be parsed, keep in active
+                active.append(lead)
+
+        if not to_archive:
+            return 0
+
+        # Append to archived file
+        archived = self._read_archived()
+        archived.extend(to_archive)
+        self._write_archived(archived)
+
+        # Rewrite active leads file
+        self._write(active)
+
+        return len(to_archive)
+
+    def get_archived_leads(self):
+        """Return all archived leads, most recently archived first."""
+        leads = self._read_archived()
+        return list(reversed(leads))
+
+    def get_archived_lead_count(self):
+        """Return the number of archived leads."""
+        return len(self._read_archived())
+
+    def export_archived_csv(self):
+        """Export all archived leads as CSV text."""
+        leads = self._read_archived()
+        output = io.StringIO()
+        if leads:
+            fields = [
+                "id", "name", "email", "phone", "company",
+                "question", "source", "timestamp", "status",
+                "email_sent", "email_sent_at", "notes", "archived_at"
+            ]
+            writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
             writer.writeheader()
             writer.writerows(leads)
         return output.getvalue()

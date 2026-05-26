@@ -3,3 +3,9 @@ resend>=2.0.0
 googletrans==4.0.0rc1
 langdetect>=1.0.9
 requests>=2.31.0
+
+# WhatsApp integration (Twilio)
+twilio>=9.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-dotenv>=1.0.0

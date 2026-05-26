@@ -168,3 +168,156 @@ def reset_analytics():
 def export_analytics_json():
     """Return analytics as JSON string for download."""
     return json.dumps(_read(), indent=2)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# WHATSAPP-SPECIFIC ANALYTICS
+# ═══════════════════════════════════════════════════════════════════════════
+
+WHATSAPP_ANALYTICS_FILE = os.path.join(os.path.dirname(__file__), "whatsapp_analytics.json")
+
+
+def _ensure_whatsapp_file():
+    if not os.path.exists(WHATSAPP_ANALYTICS_FILE):
+        _write_whatsapp({
+            "messages": [],
+            "per_phone": {},
+            "daily_whatsapp": {},
+        })
+
+
+def _read_whatsapp():
+    try:
+        with open(WHATSAPP_ANALYTICS_FILE, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        _ensure_whatsapp_file()
+        return _read_whatsapp()
+
+
+def _write_whatsapp(data):
+    with open(WHATSAPP_ANALYTICS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def log_whatsapp_message(phone: str, direction: str, faq_match: bool = False):
+    """
+    Log a WhatsApp message (sent or received) for analytics.
+
+    Args:
+        phone: The phone number (without 'whatsapp:' prefix)
+        direction: 'sent' (bot replied) or 'received' (user messaged)
+        faq_match: Whether the message resulted in an FAQ match (for received messages)
+    """
+    if not phone:
+        return
+    try:
+        data = _read_whatsapp()
+        now = datetime.now()
+        today = now.strftime("%Y-%m-%d")
+        iso_now = now.isoformat()
+
+        # Add to messages list (cap at 10,000 to avoid unbounded growth)
+        data["messages"].append({
+            "phone": phone,
+            "direction": direction,
+            "timestamp": iso_now,
+            "faq_match": faq_match,
+        })
+        if len(data["messages"]) > 10000:
+            data["messages"] = data["messages"][-5000:]
+
+        # Update per-phone stats
+        if phone not in data["per_phone"]:
+            data["per_phone"][phone] = {
+                "sent": 0,
+                "received": 0,
+                "first_seen": iso_now,
+                "last_seen": iso_now,
+            }
+        pp = data["per_phone"][phone]
+        if direction == "sent":
+            pp["sent"] = pp.get("sent", 0) + 1
+        elif direction == "received":
+            pp["received"] = pp.get("received", 0) + 1
+        pp["last_seen"] = iso_now
+
+        # Update daily stats
+        if today not in data["daily_whatsapp"]:
+            data["daily_whatsapp"][today] = {"sent": 0, "received": 0}
+        if direction == "sent":
+            data["daily_whatsapp"][today]["sent"] = data["daily_whatsapp"][today].get("sent", 0) + 1
+        elif direction == "received":
+            data["daily_whatsapp"][today]["received"] = data["daily_whatsapp"][today].get("received", 0) + 1
+
+        _write_whatsapp(data)
+    except Exception:
+        pass  # Don't break the message flow if analytics fails
+
+
+def get_whatsapp_analytics():
+    """Return a summary of WhatsApp analytics data."""
+    try:
+        data = _read_whatsapp()
+    except Exception:
+        return _empty_whatsapp_summary()
+
+    total_received = sum(1 for m in data["messages"] if m["direction"] == "received")
+    total_sent = sum(1 for m in data["messages"] if m["direction"] == "sent")
+    total_messages = total_received + total_sent
+    unique_phones = len(data["per_phone"])
+
+    # Daily chart data (last 14 days)
+    daily_data = []
+    for i in range(13, -1, -1):
+        day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        stats = data["daily_whatsapp"].get(day, {"sent": 0, "received": 0})
+        daily_data.append({
+            "date": day,
+            "sent": stats.get("sent", 0),
+            "received": stats.get("received", 0),
+        })
+
+    # Top active phones (by total messages)
+    top_phones = sorted(
+        data["per_phone"].items(),
+        key=lambda x: x[1].get("sent", 0) + x[1].get("received", 0),
+        reverse=True,
+    )[:20]
+
+    return {
+        "total_messages": total_messages,
+        "total_sent": total_sent,
+        "total_received": total_received,
+        "unique_phones": unique_phones,
+        "daily_data": daily_data,
+        "top_phones": top_phones,
+    }
+
+
+def _empty_whatsapp_summary():
+    return {
+        "total_messages": 0,
+        "total_sent": 0,
+        "total_received": 0,
+        "unique_phones": 0,
+        "daily_data": [{"date": (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d"), "sent": 0, "received": 0} for i in range(13, -1, -1)],
+        "top_phones": [],
+    }
+
+
+def reset_whatsapp_analytics():
+    """Wipe all WhatsApp analytics data."""
+    _write_whatsapp({
+        "messages": [],
+        "per_phone": {},
+        "daily_whatsapp": {},
+    })
+
+
+def export_whatsapp_analytics_json():
+    """Return WhatsApp analytics as JSON string for download."""
+    try:
+        return json.dumps(_read_whatsapp(), indent=2)
+    except Exception:
+        return json.dumps({"messages": [], "per_phone": {}, "daily_whatsapp": {}}, indent=2)

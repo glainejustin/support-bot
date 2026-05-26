@@ -6,6 +6,9 @@ leads.json
 handoff_messages.json
 custom_faqs.json
 analytics_data.json
+audit_log.json
+archived_leads.json
+whatsapp_sessions.json
 test_*.json
 .env
 .env.local
