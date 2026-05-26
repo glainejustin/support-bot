@@ -3,6 +3,9 @@ __pycache__/
 .streamlit/secrets.toml
 nul
 leads.json
+handoff_messages.json
+custom_faqs.json
+analytics_data.json
 test_*.json
 .env
 .env.local

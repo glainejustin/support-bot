@@ -1165,8 +1165,9 @@ if st.session_state.last_lead_captured and ENABLE_HANDOFF:
             last_shown_key = f"_last_agent_response_{handoff_id}"
             if st.session_state.get(last_shown_key) != agent_text:
                 with st.chat_message("assistant"):
+                    safe_agent_text = html.escape(agent_text)
                     st.markdown(
-                        f"<div class='chat-bubble'><b>🧑‍💼 Agent:</b> {agent_text}</div>",
+                        f"<div class='chat-bubble'><b>🧑‍💼 Agent:</b> {safe_agent_text}</div>",
                         unsafe_allow_html=True,
                     )
                 st.session_state[last_shown_key] = agent_text
