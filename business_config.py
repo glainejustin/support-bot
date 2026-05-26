@@ -44,6 +44,7 @@ FOLLOW_UP_MESSAGE = (
 # On Resend's free tier, you can use "onboarding@resend.dev"
 # OR verify your own domain in the Resend dashboard.
 # Can be overridden via EMAIL_FROM environment variable.
+import os as _os
 EMAIL_FROM = _os.environ.get("EMAIL_FROM") or SUPPORT_EMAIL  # Can also use "onboarding@resend.dev"
 
 # Subject line for follow-up emails (supports {name} placeholder)
@@ -99,6 +100,45 @@ AUTO_SEND_EMAIL = True
 PROMO_CODE = ""                               # e.g., "WELCOME20" for 20% off
 PROMO_DETAILS = ""                            # e.g., "20% off your first month!"
 
+# ─── MULTI-LANGUAGE SUPPORT ────────────────────────────────────────────────
+
+# Enable the bot to detect and respond in multiple languages.
+# When enabled, the bot will:
+#   1. Auto-detect the user's language from their message
+#   2. Translate their question to English for FAQ matching
+#   3. Translate the response back to their language
+#
+# Requires: pip install googletrans==4.0.0rc1 langdetect>=1.0.9
+ENABLE_TRANSLATION = True                   # Set to False to disable multi-language
+# List of supported languages (ISO 639-1 codes) — leave empty to allow all
+# Example: ["en", "es", "fr", "de", "pt", "ja", "ko", "zh-cn"]
+SUPPORTED_LANGUAGES = []
+# Default language if detection fails
+DEFAULT_LANGUAGE = "en"
+
+# ─── LIVE AGENT HANDOFF ──────────────────────────────────────────────────────
+
+# When the bot can't answer AND a lead is captured, the conversation
+# is flagged for a human agent to pick up. Admins can respond from
+# the dashboard and messages appear in the user's chat.
+#
+# Handoff messages are stored in handoff_messages.json.
+ENABLE_HANDOFF = True                       # Enable live agent handoff
+# Message shown to user when handoff is requested
+HANDOFF_MESSAGE = "A human agent will connect with you shortly! 🧑‍💼"
+
+# ─── WEBHOOK / SLACK ALERTS ──────────────────────────────────────────────────
+
+# Send a webhook notification when a new lead is captured.
+# Works with Slack webhooks, Discord webhooks, or any custom endpoint.
+#
+# Set WEBHOOK_URL to your webhook endpoint to enable.
+# Leave empty to disable.
+WEBHOOK_URL = ""                              # e.g., "https://hooks.slack.com/services/..."
+# Customize the webhook message
+WEBHOOK_TITLE = "New Lead Captured! 🎯"       # Title/header for the webhook message
+WEBHOOK_ENABLED = bool(WEBHOOK_URL)            # Auto-enabled when URL is set
+
 # ─── DASHBOARD ADMIN PASSWORD ───────────────────────────────────────────────
 
 # ⚠️  SECURITY WARNING: Change this to a strong, unique password!
@@ -113,5 +153,4 @@ PROMO_DETAILS = ""                            # e.g., "20% off your first month!
 #     to this file. On Streamlit Cloud, set it in Settings → Secrets:
 #       ADMIN_PASSWORD = "your-secure-password"
 #
-import os as _os
 ADMIN_PASSWORD = _os.environ.get("ADMIN_PASSWORD") or "admin123"

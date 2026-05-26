@@ -16,12 +16,40 @@ Tip: Edit 'business_config.py' for business name, email, phone, promo code, etc.
 """
 
 import difflib
+import json
+import os
 import re
 from business_config import PROMO_CODE, PROMO_DETAILS
 
 # ─── PROMO CODE (auto-filled from business_config.py) ─────────────────────
 _PROMO = f"**{PROMO_CODE}**" if PROMO_CODE else None
 _PROMO_DETAILS = f" for {PROMO_DETAILS}" if PROMO_DETAILS else ""
+
+# ─── CUSTOM FAQS FILE (added from admin dashboard) ─────────────────────────
+CUSTOM_FAQS_FILE = os.path.join(os.path.dirname(__file__), "custom_faqs.json")
+
+
+def load_custom_faqs():
+    """Load custom FAQs added from the admin dashboard."""
+    if not os.path.exists(CUSTOM_FAQS_FILE):
+        return []
+    try:
+        with open(CUSTOM_FAQS_FILE, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+
+def save_custom_faqs(custom_faqs):
+    """Save custom FAQs to the JSON file."""
+    with open(CUSTOM_FAQS_FILE, "w") as f:
+        json.dump(custom_faqs, f, indent=2)
+
+
+def get_all_faqs():
+    """Return built-in FAQs merged with custom FAQs."""
+    return faqs + load_custom_faqs()
+
 
 # ─── EDIT YOUR FAQS HERE ────────────────────────────────────────────────────
 
@@ -485,12 +513,13 @@ def find_best_match(user_message, context=None):
         return None
 
     message_lower = user_message.lower().strip()
+    all_faqs = get_all_faqs()
 
     # Score each FAQ by how well its keywords match
     best_score = 0
     best_match = None
 
-    for faq in faqs:
+    for faq in all_faqs:
         for keyword in faq["keywords"]:
             # Check if keyword is directly in the message
             if keyword.lower() in message_lower:
@@ -512,6 +541,11 @@ def find_best_match(user_message, context=None):
     # Boost score if this FAQ relates to the conversation context
     if context and best_match:
         context_keywords = _QUESTION_TO_KEYWORDS.get(context, [])
+        # Also check custom FAQs for context keywords
+        for cf in all_faqs:
+            if cf.get("question") == context:
+                context_keywords = cf.get("keywords", [])
+                break
         if any(kw in context_keywords for kw in best_match["keywords"]):
             best_score *= 1.3  # 30% boost for contextually relevant FAQs
 
