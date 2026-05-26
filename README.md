@@ -6,9 +6,11 @@
     <a href="#-demo">Demo</a> •
     <a href="#-quick-start">Quick Start</a> •
     <a href="#-multi-language">Multi-Language</a> •
+    <a href="#-whatsapp">WhatsApp</a> •
     <a href="#-live-agent-handoff">Handoff</a> •
     <a href="#-conversation-analytics">Analytics</a> •
     <a href="#-faq-training">FAQ Training</a> •
+    <a href="#-lead-retention">Archiving</a> •
     <a href="#-deployment">Deployment</a>
   </p>
 
@@ -35,15 +37,19 @@ Every business gets their own copy. Just fork, edit one config file, and deploy.
 | Feature | Description |
 |---|---|
 | 💬 **24/7 Automated Support** | Instantly answers customer questions about pricing, features, billing, account management, integrations, and more |
+| 📱 **WhatsApp Integration** | Run the same bot on WhatsApp via Twilio — full session state machine, FAQ matching, and lead capture |
 | 🧠 **Fuzzy Matching** | Understands typos, misspellings, and similar phrasing — not just exact keywords |
 | 🌐 **Multi-Language** | Auto-detects the user's language and responds in their native tongue (40+ languages) |
 | 🤝 **Live Agent Handoff** | When the bot can't answer, an admin can pick up the conversation from the dashboard |
 | 📊 **Conversation Analytics** | Track resolution rates, popular questions, daily activity, feedback, and language distribution |
+| 📊 **WhatsApp Analytics** | Track messages sent/received per phone number with daily charts and per-phone breakdown |
 | 🧠 **FAQ Training** | Add new FAQs directly from the admin dashboard — no code or restart needed |
 | 🏢 **White-Label Branding** | Customize company name, colors, tagline, and bot avatar in one config file |
 | 📬 **Lead Capture** | Automatically collects name, email, and phone when it can't answer a question |
 | 📨 **Email Follow-ups** | Sends personalized follow-up emails via Resend (free, 3,000 emails/month) |
-| 📋 **Admin Dashboard** | View leads, analytics, manage handoffs, train FAQs, mark as contacted/closed, export CSV |
+| 📋 **Admin Dashboard** | View leads, analytics, manage handoffs, train FAQs, WhatsApp sessions, archived leads, audit log — all in one place |
+| 💾 **Lead Archiving** | Auto-archives leads older than 90 days — keeps the active list clean without losing data |
+| 📋 **Audit Log** | Tracks every admin action (mark contacted, delete lead, export data) with timestamps |
 | 🔔 **Webhook Alerts** | Send Slack/Discord notifications when new leads are captured |
 | 👍 **Feedback Buttons** | Customers can thumbs-up/down responses to help improve your FAQ |
 | 🔐 **Password-Protected Admin** | Secure admin panel with configurable password (supports env var override) |
@@ -128,6 +134,93 @@ DEFAULT_LANGUAGE = "en"                # Fallback if detection fails
 
 ---
 
+## 📱 WhatsApp Integration
+
+Run the same support bot on **WhatsApp** via Twilio. Customers can message your business on WhatsApp and get the same FAQ matching, lead capture, and conversation flow — all integrated with your Streamlit admin dashboard.
+
+### Architecture
+
+```
+WhatsApp user → Twilio → whatsapp_handler (FastAPI) → knowledge_base (FAQ match)
+                                                → leads_manager (lead capture)
+                                                → analytics (message tracking)
+                                                      ↓
+                                Streamlit admin dashboard reads the same data
+```
+
+### Quick Start
+
+1. **Sign up for Twilio** at [twilio.com](https://twilio.com) (free trial available)
+2. **Enable WhatsApp Sandbox** in the Twilio Console → Messaging → Try it out → WhatsApp
+3. **Install dependencies:**
+
+```bash
+pip install twilio fastapi uvicorn python-dotenv
+```
+
+4. **Create a `.env` file** with your Twilio credentials:
+
+```env
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_WHATSAPP_NUMBER=+14155238886
+```
+
+5. **Enable WhatsApp** in `business_config.py`:
+
+```python
+WHATSAPP_ENABLED = True
+```
+
+6. **Start the webhook server:**
+
+```bash
+uvicorn whatsapp_handler:app --host 0.0.0.0 --port 8000
+```
+
+7. **Expose with ngrok:**
+
+```bash
+ngrok http 8000
+```
+
+8. **Configure Twilio webhook:** Set your ngrok URL + `/whatsapp` as the webhook in Twilio Console
+   (e.g., `https://xxxx.ngrok.io/whatsapp`)
+
+### How the WhatsApp state machine works
+
+```
+User sends message
+    ↓
+FAQ match? ──Yes──→ Reply with answer
+    ↓
+    No
+    ↓
+Ask for name → Ask for email → Ask for phone (optional) → Lead captured ✅
+```
+
+### Session persistence
+
+Sessions are persisted to `whatsapp_sessions.json` so conversations survive server restarts.
+The admin dashboard includes a **💬 WhatsApp** tab showing:
+- Active sessions with state (Chatting / Awaiting Info)
+- Lead info captured via WhatsApp
+- Per-phone message counts
+- WhatsApp-specific analytics (sent/received per phone, daily charts)
+- Server health check (pings the webhook server)
+
+### REST API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Health check with Twilio config status and active session count |
+| `/whatsapp` | POST | Twilio WhatsApp webhook — receives messages and replies via REST API |
+| `/webhook` | POST | Generic webhook (supports both form and JSON payloads) |
+| `/sessions` | GET | List active sessions (masked phone numbers) |
+| `/sessions/{phone}` | GET | Get detailed session info for a specific number |
+
+---
+
 ## 🤝 Live Agent Handoff
 
 When the bot can't answer a question AND a lead is captured, the conversation is flagged for a human agent.
@@ -202,6 +295,38 @@ Add new FAQs directly from the admin dashboard without editing code or restartin
 - Expand any FAQ to see details
 - **Delete** individual FAQs with the delete button
 - Built-in and custom FAQs are merged for matching
+
+---
+
+## 💾 Lead Retention & Archiving
+
+Auto-archives leads older than a configurable number of days. Archived leads are moved to a separate file (`archived_leads.json`) and can still be viewed, searched, and exported from the admin dashboard.
+
+### Configuration
+
+In `business_config.py`:
+
+```python
+LEAD_RETENTION_DAYS = 90   # Auto-archive leads older than 90 days
+                           # Set to 0 to disable auto-archiving
+```
+
+### How it works
+
+- **On server startup:** The bot automatically archives leads older than `LEAD_RETENTION_DAYS`
+- **Active leads** stay in `leads.json` for fast access
+- **Archived leads** move to `archived_leads.json` with an `archived_at` timestamp
+- **Admin dashboard** shows archived count in the sidebar with a muted style
+- **Archived viewer** has search and CSV export — same as active leads
+
+### Admin archived viewer
+
+| Feature | Description |
+|---|---|
+| 💾 **Archived count badge** | Shows archived lead total in the sidebar |
+| 👁️ **View archived** | Browse archived leads with search |
+| 📥 **Export CSV** | Download archived leads for your CRM |
+| 📝 **Archived notes** | Each archived lead retains its original notes and status |
 
 ---
 
@@ -366,6 +491,31 @@ Access the admin panel from the **sidebar** → enter your admin password:
 | 🗑️ **Delete FAQ** | Remove custom FAQs |
 | 📚 **View All FAQs** | Both built-in and custom FAQs merged |
 
+### WhatsApp Sessions
+
+| Feature | What it does |
+|---|---|
+| 💬 **Session Viewer** | Browse active WhatsApp sessions with state, phone, and lead info |
+| 📊 **WhatsApp Analytics** | Sent/received metrics with 14-day bar chart and per-phone breakdown |
+| 🔍 **Search** | Filter sessions by phone, state, or lead name/email |
+| 🔧 **Server Status** | Pings the WhatsApp handler's health endpoint |
+| 📥 **Export Analytics** | Download WhatsApp analytics as JSON |
+
+### Archived Leads
+
+| Feature | What it does |
+|---|---|
+| 💾 **Archived Viewer** | Browse and search leads auto-archived by the retention policy |
+| 📥 **Export CSV** | Download archived leads for your records |
+
+### Audit Log
+
+| Feature | What it does |
+|---|---|
+| 📋 **Activity Log** | Every admin action recorded with timestamp and details |
+| 🔍 **Search** | Filter by action type or keyword |
+| 📥 **Export** | Download the full audit log as JSON |
+
 ---
 
 ## 🧠 How It Works
@@ -387,17 +537,22 @@ support-bot/
 ├── bot.py                 # Main app — Streamlit chat interface + admin dashboard
 ├── business_config.py     # ✏️ EDIT THIS — One file to customize everything
 ├── knowledge_base.py      # ✏️ EDIT THIS — Your FAQ questions and answers
-├── leads_manager.py       # Lead storage, retrieval, CSV export
+├── leads_manager.py       # Lead storage, retrieval, CSV export, archiving
+├── analytics.py           # 📊 Conversation + WhatsApp analytics tracking
 ├── email_sender.py        # Resend email integration
-├── analytics.py           # 📊 Conversation analytics tracking
+├── whatsapp_handler.py    # 📱 FastAPI server for Twilio WhatsApp webhooks
+├── audit_log.py           # 📋 Admin action audit logging
 ├── requirements.txt       # Python dependencies
 ├── .streamlit/
 │   ├── config.toml        # Streamlit theme and server config
 │   └── secrets.toml       # 🔐 API keys (gitignored — don't commit!)
 ├── leads.json             # 📁 Captured leads (gitignored)
+├── archived_leads.json    # 📁 Archived leads (gitignored)
 ├── handoff_messages.json  # 📁 Handoff conversations (gitignored)
 ├── custom_faqs.json       # 📁 Admin-added FAQs (gitignored)
 ├── analytics_data.json    # 📁 Analytics metrics (gitignored)
+├── whatsapp_sessions.json # 📁 WhatsApp session state (gitignored)
+├── audit_log.json         # 📁 Admin audit trail (gitignored)
 ├── .env.example           # 🔐 Environment variable reference
 ├── SECURITY.md            # Security audit report
 └── .gitignore
@@ -408,6 +563,8 @@ support-bot/
 ## 🔧 Tech Stack
 
 - **[Streamlit](https://streamlit.io/)** — Python web framework (free hosting)
+- **[FastAPI](https://fastapi.tiangolo.com/)** — WhatsApp webhook server
+- **[Twilio](https://twilio.com/)** — WhatsApp Business API integration
 - **[Resend](https://resend.com/)** — Email API (free tier: 3,000 emails/month)
 - **[googletrans](https://pypi.org/project/googletrans/)** — Free translation API
 - **[langdetect](https://pypi.org/project/langdetect/)** — Language detection library
